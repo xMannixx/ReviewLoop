@@ -65,6 +65,7 @@ def call_llm(
     Returns: {success, text, error, duration, cache_read_tokens, cache_write_tokens}
     """
     fn = {
+        "demo":      _call_demo,
         "google":    _call_google,
         "anthropic": _call_anthropic,
         "openai":    _call_openai,
@@ -86,6 +87,63 @@ def call_llm(
         max_tokens=max_tokens,
         thinking_effort=thinking_effort,
     )
+
+
+# ── Demo Provider ───────────────────────────────────────────────────────────
+
+def _call_demo(
+    model: str, prompt: str, api_key: str,
+    system_prompt: str | None = None,
+    temperature: float = 0.2, max_tokens: int = 8192,
+    thinking_effort: str = "none",
+) -> dict:
+    """Deterministic offline provider for first-run demos and screenshots."""
+    start = time.time()
+    if "konsolid" in prompt.lower() or "review-ergebnisse" in prompt.lower():
+        text = """# Demo-Konsolidierung
+
+## Konsens-Findings
+- Eingaben brauchen klare Validierung und gut sichtbare Fehlerzustaende.
+- Lange Konfigurationen sollten in Defaults und optionale Details getrennt werden.
+
+## Priorisierte Massnahmen
+1. Quickstart vereinfachen.
+2. Erste Erfolgserfahrung per Demo-Modus sicherstellen.
+3. Review-Ausgaben exportierbar machen."""
+    elif "cursor" in prompt.lower() or "auftrag" in prompt.lower():
+        text = """titel: Demo: Quickstart verbessern
+aufgaben:
+  - problem: "Neue Nutzer brauchen zu viele manuelle Schritte."
+    loesung: "Quickstart, Demo-Modus und klarere Fehlermeldungen ergaenzen."
+    betroffene_dateien:
+      - README.md
+      - templates/index.html
+akzeptanzkriterien:
+  - "Ein Nutzer kann den Demo-Flow ohne API-Key starten."
+  - "Fehler werden als Toast statt Alert angezeigt."
+hinweise:
+  - "Dies ist ein Demo-Provider-Ergebnis." """
+    else:
+        text = """title: Demo Review Brief
+description: "Automatically generated demo brief for ReviewLoop."
+context:
+  goal: "Show the full 5-phase workflow without external API keys."
+acceptance_criteria:
+  - "The run can proceed through all phases."
+  - "Outputs are structured and editable."
+review_steps:
+  - "Check onboarding clarity."
+  - "Check error handling and empty states."
+priority: medium"""
+    return {
+        "success": True,
+        "text": text,
+        "error": None,
+        "duration": round(time.time() - start, 2),
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "thinking_budget": 0,
+    }
 
 
 # ── Google Gemini ─────────────────────────────────────────────────────────────

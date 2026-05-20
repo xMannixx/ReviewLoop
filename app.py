@@ -1,5 +1,5 @@
 """
-Aethos Pipeline Dashboard
+ReviewLoop
 Starten: python app.py
 Browser: http://localhost:5000
 """
@@ -8,7 +8,11 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
 import threading
+import time
+import webbrowser
+from base64 import b64decode
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -16,6 +20,8 @@ from typing import Any
 from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 
 from pipeline.config_alias import dashboard_config_path, load_dashboard_config, resolve_project_path
+from pipeline.i18n import SUPPORTED_LANGS, get_language, translate
+from pipeline.telemetry import capture as capture_telemetry
 from pipeline import state_machine as sm
 from pipeline.konzertmeister import (
     consolidate_reviews,
@@ -38,7 +44,37 @@ BASE_DIR = Path(__file__).parent
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.urandom(24)
-APP_LOGGER = logging.getLogger("aethos.dashboard")
+APP_LOGGER = logging.getLogger("reviewloop.dashboard")
+
+
+def _auth_enabled() -> bool:
+    return bool(os.environ.get("REVIEWLOOP_BASIC_AUTH_PASSWORD"))
+
+
+def _is_authorized() -> bool:
+    if not _auth_enabled():
+        return True
+    header = request.headers.get("Authorization", "")
+    if not header.startswith("Basic "):
+        return False
+    try:
+        decoded = b64decode(header.split(" ", 1)[1]).decode("utf-8")
+        _, password = decoded.split(":", 1)
+    except Exception:
+        return False
+    expected = os.environ.get("REVIEWLOOP_BASIC_AUTH_PASSWORD", "")
+    return secrets.compare_digest(password, expected)
+
+
+@app.before_request
+def _optional_basic_auth():
+    if request.path.startswith("/static/") or _is_authorized():
+        return None
+    return (
+        "Authentication required",
+        401,
+        {"WWW-Authenticate": 'Basic realm="ReviewLoop"'},
+    )
 
 
 @app.after_request
@@ -73,7 +109,7 @@ def _workspace_root_paths(cfg: dict) -> list[Path]:
 
 def _load_config() -> dict:
     config_path = dashboard_config_path(BASE_DIR)
-    return load_dashboard_config(config_path, logger=logging.getLogger("aethos.dashboard"))
+    return load_dashboard_config(config_path, logger=logging.getLogger("reviewloop.dashboard"))
 
 
 def _load_env():
@@ -103,19 +139,30 @@ def _get_api_keys() -> dict:
     return merged
 
 
+@app.context_processor
+def _inject_market_ready_context():
+    lang = get_language(request.cookies.get("lang"))
+    return {
+        "lang": lang,
+        "supported_langs": SUPPORTED_LANGS,
+        "t": lambda key, **kwargs: translate(key, lang, **kwargs),
+        "has_any_key": any(_get_api_keys().values()),
+    }
+
+
 def _has_keys_for_phase(phase_idx: int, api_keys: dict) -> tuple[bool, str]:
     """Check if we have the required API keys for a given phase."""
     cfg = _load_config()
     if phase_idx in (0, 2, 3):
         provider = cfg.get("teamleiter", {}).get("provider", "anthropic")
-        if not api_keys.get(provider):
-            return False, f"API-Key fuer Teamleiter ({provider}) fehlt."
+        if provider != "demo" and not api_keys.get(provider):
+            return False, f"API-Key fuer Orchestrator ({provider}) fehlt."
     if phase_idx == 1:
         reviewers = cfg.get("reviewer", {})
         missing = []
         for ki_id, rcfg in reviewers.items():
             prov = rcfg.get("provider", "anthropic")
-            if not api_keys.get(prov):
+            if prov != "demo" and not api_keys.get(prov):
                 missing.append(f"{rcfg.get('name', ki_id)} ({prov})")
         if missing:
             return False, f"API-Keys fehlen fuer: {', '.join(missing)}"
@@ -338,14 +385,15 @@ def new_run():
         km_system_prompt=km_system_prompt,
         context_sheet=context_sheet,
     )
+    capture_telemetry("run_created", {"skip_phase1": skip_phase1, "has_input": bool(input_text)})
 
-    # If Manni already has a finished review YAML, auto-approve Phase 1
+    # If a finished review YAML is provided, auto-approve Phase 1.
     if skip_phase1 and input_text:
         sm.mark_phase_running(run.run_id, 0)
         sm.mark_phase_review(run.run_id, 0, {
             "yaml_text": input_text,
             "skipped": True,
-            "note": "Direkt von Manni eingefuegt — Phase 1 uebersprungen",
+            "note": "Direkt eingefuegt — Phase 1 uebersprungen",
         })
         sm.approve_phase(run.run_id, 0)
 
@@ -371,6 +419,29 @@ def save_keys():
 def keys_status():
     api_keys = _get_api_keys()
     return jsonify({k: bool(v) for k, v in api_keys.items()})
+
+
+@app.route("/api/language", methods=["POST"])
+def set_language():
+    body = request.get_json(force=True, silent=True) or {}
+    lang = get_language(body.get("lang"))
+    response = jsonify({"ok": True, "lang": lang})
+    response.set_cookie("lang", lang, max_age=60 * 60 * 24 * 365, samesite="Lax")
+    return response
+
+
+@app.route("/api/onboarding/status")
+def onboarding_status():
+    cfg = _load_config()
+    api_keys = _get_api_keys()
+    providers = sorted({v.get("provider", "anthropic") for v in cfg.get("reviewer", {}).values()})
+    orchestrator_provider = cfg.get("teamleiter", {}).get("provider", "anthropic")
+    return jsonify({
+        "has_any_key": any(api_keys.values()),
+        "demo_available": "demo" in providers or orchestrator_provider == "demo",
+        "providers": providers,
+        "orchestrator_provider": orchestrator_provider,
+    })
 
 
 # ── Run Status ───────────────────────────────────────────────────────────────
@@ -500,7 +571,6 @@ def _execute_phase2(run_id: str, run, api_keys: dict, body: dict,
         temperature=temperature,
     )
 
-    import time
     while not is_review_complete(run_id):
         time.sleep(1)
 
@@ -624,6 +694,7 @@ def phase_approve(run_id: str, phase_idx: int):
     run = sm.approve_phase(run_id, phase_idx, edited_result=edited_result)
     if run is None:
         return jsonify({"error": "Run nicht gefunden"}), 404
+    capture_telemetry("phase_approved", {"phase_idx": phase_idx, "overall_status": run.overall_status})
     response: dict[str, Any] = {"ok": True, "run": run.to_dict()}
     if phase_idx == 4 and run.overall_status == "completed":
         try:
@@ -951,7 +1022,7 @@ def workspace_read_multi():
     })
 
 
-# ── Teamleiter Model Choices (technischer Route-Name bleibt erhalten) ──────
+# ── Orchestrator Model Choices (technischer Route-Name bleibt erhalten) ─────
 
 @app.route("/api/konzertmeister_models")
 @app.route("/api/teamleiter_models")
@@ -1054,7 +1125,7 @@ def get_stats():
                 cache_read  = r.get("cache_read_tokens", 0) or 0
                 cache_write = r.get("cache_write_tokens", 0) or 0
                 if cache_read or cache_write:
-                    label = _model_label_map.get(km_model, km_model) if km_model else "Teamleiter"
+                    label = _model_label_map.get(km_model, km_model) if km_model else "Orchestrator"
                     _add_cache(label, cache_read, cache_write)
                 thinking_tokens_total += r.get("thinking_budget", 0) or 0
 
@@ -1124,12 +1195,19 @@ def list_reviewers():
     })
 
 
+def main() -> None:
+    host = os.environ.get("REVIEWLOOP_HOST", "localhost")
+    port = int(os.environ.get("REVIEWLOOP_PORT", "5000"))
+    url = f"http://localhost:{port}"
+    print("\n  ReviewLoop")
+    print(f"  Browser: {url}")
+    print("  Stoppen: Ctrl+C\n")
+    if host in ("localhost", "127.0.0.1"):
+        threading.Timer(0.8, lambda: webbrowser.open(url)).start()
+    app.run(host=host, port=port, debug=False, threaded=True)
+
+
 # ── Entrypoint ────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    import webbrowser
-    print("\n  Aethos Pipeline Dashboard")
-    print("  Browser: http://localhost:5000")
-    print("  Stoppen: Ctrl+C\n")
-    threading.Timer(0.8, lambda: webbrowser.open("http://localhost:5000")).start()
-    app.run(host="localhost", port=5000, debug=False, threaded=True)
+    main()

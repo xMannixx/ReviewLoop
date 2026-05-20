@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — Aethos Pipeline{% endblock %}
+{% block title %}{{ t('dashboard.title') }} — ReviewLoop{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div>
-    <h1 class="page-title">Pipeline Runs</h1>
-    <p class="page-subtitle">Jeder Run durchlaeuft 5 Phasen. Manni klickt nur Buttons.</p>
+    <h1 class="page-title">{{ t('dashboard.title') }}</h1>
+    <p class="page-subtitle">{{ t('dashboard.subtitle') }}</p>
   </div>
-  <button class="btn btn-primary" onclick="toggleNewRunModal()">&#43; Neuer Run</button>
+  <button class="btn btn-primary" onclick="toggleNewRunModal()">&#43; {{ t('dashboard.new_run') }}</button>
 </div>
 
 <!-- ── Statistik-Panel ──────────────────────────────────────────────── -->
@@ -73,7 +73,7 @@
 
     <!-- Modell-Nutzung -->
     <div class="stats-section">
-      <div class="stats-section-title">&#127908; Teamleiter-Modell-Nutzung</div>
+      <div class="stats-section-title">&#127908; {{ t('stats.orchestrator_usage') }}</div>
       <div id="model-usage-list" class="stats-bar-list"></div>
     </div>
 
@@ -103,7 +103,7 @@
         <div class="stats-kv"><span class="stats-kv-lbl">Gesamt</span><span class="stats-kv-val" id="ro-total">—</span></div>
         <div class="stats-kv"><span class="stats-kv-lbl">Abgeschlossen</span><span class="stats-kv-val" id="ro-completed">—</span></div>
         <div class="stats-kv"><span class="stats-kv-lbl">Laufend</span><span class="stats-kv-val" id="ro-running">—</span></div>
-        <div class="stats-kv"><span class="stats-kv-lbl">Warte auf Manni</span><span class="stats-kv-val" id="ro-review">—</span></div>
+        <div class="stats-kv"><span class="stats-kv-lbl">{{ t('stats.awaiting_approval') }}</span><span class="stats-kv-val" id="ro-review">—</span></div>
         <div class="stats-kv"><span class="stats-kv-lbl">Abgebrochen/Abgelehnt</span><span class="stats-kv-val" id="ro-aborted">—</span></div>
         <div class="stats-kv"><span class="stats-kv-lbl">&#216; Gesamtdauer</span><span class="stats-kv-val" id="ro-avg-dur">—</span></div>
       </div>
@@ -115,9 +115,9 @@
 {% if not runs %}
 <div class="empty-state">
   <div class="empty-icon">&#127908;</div>
-  <h3>Noch keine Pipeline-Runs</h3>
-  <p>Klicke "Neuer Run" um den ersten Review-Zyklus zu starten.</p>
-  <button class="btn btn-primary" onclick="toggleNewRunModal()">&#43; Neuer Run</button>
+  <h3>{{ t('dashboard.empty_title') }}</h3>
+  <p>{{ t('dashboard.empty_text') }}</p>
+  <button class="btn btn-primary" onclick="toggleNewRunModal()">&#43; {{ t('dashboard.new_run') }}</button>
 </div>
 {% else %}
 <div class="runs-grid">
@@ -127,8 +127,8 @@
       <div class="run-card-header">
         <span class="run-title">{{ run.title }}</span>
         <span class="status-badge badge-{{ run.overall_status }}">
-          {{ {'pending': 'Ausstehend', 'running': 'Laeuft', 'review': 'Warte auf Manni',
-              'approved': 'Freigegeben', 'rejected': 'Abgelehnt', 'completed': 'Abgeschlossen'
+          {{ {'pending': t('status.pending'), 'running': t('status.running'), 'review': t('status.review'),
+              'approved': t('status.approved'), 'rejected': t('status.rejected'), 'completed': t('status.completed')
              }.get(run.overall_status, run.overall_status) }}
         </span>
       </div>
@@ -149,12 +149,19 @@
         </span>
         {% endfor %}
       </div>
+      {% set approved_count = run.phases | selectattr('status', 'equalto', 'approved') | list | length %}
+      <div class="run-progress" aria-label="Run progress">
+        <div class="run-progress-bar" style="width: {{ approved_count * 20 }}%"></div>
+      </div>
+      <div class="run-card-preview">
+        {{ approved_count }}/5 approved · Phase {{ run.current_phase_idx + 1 if run.current_phase_idx >= 0 else 5 }}
+      </div>
     </a>
     <div class="run-card-actions">
       {% if run.overall_status == 'running' %}
-      <button class="btn btn-ghost btn-sm" onclick="abortRun('{{ run.run_id }}', event)" title="Laufende Phasen stoppen">&#9632; Stoppen</button>
+      <button class="btn btn-ghost btn-sm" onclick="abortRun('{{ run.run_id }}', event)" title="{{ t('run.stop') }}">&#9632; {{ t('run.stop') }}</button>
       {% endif %}
-      <button class="btn btn-ghost btn-sm run-delete-btn" onclick="deleteRun('{{ run.run_id }}', event)" title="Run loeschen">&#128465;</button>
+      <button class="btn btn-ghost btn-sm run-delete-btn" onclick="deleteRun('{{ run.run_id }}', event)" title="{{ t('run.delete') }}" aria-label="{{ t('run.delete') }}">&#128465;</button>
     </div>
   </div>
   {% endfor %}
@@ -170,19 +177,27 @@
     </div>
     <form method="POST" action="/run/new">
       <div class="modal-body">
+        <div class="run-wizard-nav" aria-label="New run steps">
+          <button type="button" class="run-wizard-tab active" data-step="1" onclick="setRunWizardStep(1)">1. Was reviewen?</button>
+          <button type="button" class="run-wizard-tab" data-step="2" onclick="setRunWizardStep(2)">2. Wer reviewt?</button>
+          <button type="button" class="run-wizard-tab" data-step="3" onclick="setRunWizardStep(3)">3. Wie?</button>
+        </div>
+        <div class="run-wizard-note" data-run-wizard-step="2" hidden>
+          Reviewer waehlst du in Phase 2 des Runs aus. Fuer den ersten Test reicht der Demo-Provider ohne API-Key; echte Provider erscheinen automatisch, sobald Keys vorhanden sind.
+        </div>
         <div class="form-group">
           <label class="form-label">Titel *</label>
           <input type="text" name="title" class="form-input" placeholder="z.B. Review Auth-Modul v2" required autofocus>
         </div>
         <div class="form-group">
-          <label class="form-label">Beschreibung / Auftrag an Teamleiter</label>
+          <label class="form-label">Beschreibung / Auftrag an Orchestrator</label>
           <textarea name="description" class="form-textarea" rows="3"
                     placeholder="Was soll reviewt werden? Welche Aspekte sind wichtig?"></textarea>
         </div>
-        <!-- ── Systemprompt (Teamleiter) ──────────────────────────────────── -->
+        <!-- ── Systemprompt (Orchestrator) ────────────────────────────────── -->
         <div class="form-group">
           <div class="ctx-field-header">
-            <label class="form-label" style="margin:0">&#127908; Systemprompt — Teamleiter</label>
+            <label class="form-label" style="margin:0">&#127908; {{ t('orchestrator.system_prompt') }}</label>
             <span class="ctx-field-badge">Phase 1, 3, 4</span>
             <button type="button" class="ctx-load-btn" onclick="openDocPicker('km-sp')">&#128196; Aus Dokumenten</button>
           </div>
@@ -194,7 +209,7 @@
             <button type="button" class="btn btn-ghost btn-sm" onclick="closeDocPicker('km-sp')">&#10005;</button>
           </div>
           <textarea name="km_system_prompt" id="ctx-ta-km-sp" class="form-textarea ctx-textarea" rows="3"
-                    placeholder="Systemprompt fuer den Teamleiter (optional — ueberschreibt config.toml)"
+                    placeholder="Systemprompt fuer den Orchestrator (optional — ueberschreibt config.toml)"
                     oninput="updateCtxCount('km-sp')"></textarea>
           <div class="ctx-meta">
             <span class="char-count" id="ctx-count-km-sp">0 Zeichen</span>
@@ -217,7 +232,7 @@
             <button type="button" class="btn btn-ghost btn-sm" onclick="closeDocPicker('css')">&#10005;</button>
           </div>
           <textarea name="context_sheet" id="ctx-ta-css" class="form-textarea ctx-textarea" rows="3"
-                    placeholder="Aethos Current State Sheet zur Halluzinationskontrolle (optional)"
+                    placeholder="Project Current State Sheet zur Halluzinationskontrolle (optional)"
                     oninput="updateCtxCount('css')"></textarea>
           <div class="ctx-meta">
             <span class="char-count" id="ctx-count-css">0 Zeichen</span>
@@ -272,7 +287,9 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="submit" class="btn btn-primary">&#9654; Run erstellen</button>
+        <button type="button" class="btn btn-secondary" id="run-wizard-prev" onclick="stepRunWizard(-1)" style="display:none">&#8592; Zurueck</button>
+        <button type="button" class="btn btn-secondary" id="run-wizard-next" onclick="stepRunWizard(1)">Weiter &#8594;</button>
+        <button type="submit" class="btn btn-primary" id="run-wizard-submit" style="display:none">&#9654; Run erstellen</button>
         <button type="button" class="btn btn-secondary" onclick="toggleNewRunModal()">Abbrechen</button>
       </div>
     </form>
@@ -286,6 +303,35 @@
 function toggleNewRunModal() {
   const m = document.getElementById('new-run-modal');
   m.style.display = m.style.display === 'none' ? 'flex' : 'none';
+  if (m.style.display !== 'none') initRunWizard();
+}
+
+let _runWizardStep = 1;
+
+function initRunWizard() {
+  document.querySelectorAll('#new-run-modal .form-group').forEach((group, idx) => {
+    const text = group.textContent || '';
+    const step = text.includes('Systemprompt') || text.includes('Current State Sheet') ? 3 : 1;
+    group.dataset.runWizardStep = step;
+  });
+  setRunWizardStep(_runWizardStep || 1);
+}
+
+function setRunWizardStep(step) {
+  _runWizardStep = Math.max(1, Math.min(3, step));
+  document.querySelectorAll('[data-run-wizard-step]').forEach(el => {
+    el.hidden = String(_runWizardStep) !== String(el.dataset.runWizardStep);
+  });
+  document.querySelectorAll('.run-wizard-tab').forEach(btn => {
+    btn.classList.toggle('active', String(_runWizardStep) === btn.dataset.step);
+  });
+  document.getElementById('run-wizard-prev').style.display = _runWizardStep === 1 ? 'none' : 'inline-flex';
+  document.getElementById('run-wizard-next').style.display = _runWizardStep === 3 ? 'none' : 'inline-flex';
+  document.getElementById('run-wizard-submit').style.display = _runWizardStep === 3 ? 'inline-flex' : 'none';
+}
+
+function stepRunWizard(delta) {
+  setRunWizardStep(_runWizardStep + delta);
 }
 
 // Drop zone for new run

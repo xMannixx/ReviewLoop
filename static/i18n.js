@@ -1,0 +1,73 @@
+'use strict';
+
+window.REVIEWLOOP_I18N = {
+  en: {
+    'status.pending': 'Pending',
+    'status.running': 'Running',
+    'status.running_dots': 'Running...',
+    'status.review': 'Awaiting approval',
+    'status.approved': 'Approved',
+    'status.rejected': 'Rejected',
+    'status.completed': 'Completed',
+    'toast.keys_saved': 'API keys saved',
+    'toast.error': 'Error: ',
+    'toast.saved': 'Saved',
+    'phase.running_review': 'Orchestrator is generating the review brief...',
+    'phase.running_reviewers': 'Reviewers are running...',
+    'phase.running_consolidation': 'Orchestrator is consolidating...',
+    'phase.running_task': 'Orchestrator is creating the Cursor task...',
+    'phase.running_file': 'Writing file...',
+    'phase.approve': 'Approve',
+    'phase.reject': 'Reject',
+    'phase.save_changes': 'Save changes',
+    'phase.approve_reviews': 'Approve reviews',
+    'phase.done': 'Done',
+    'phase.retry': 'Retry',
+    'phase.cancel': 'Cancel',
+    'review.generated_label': 'Generated review brief (YAML)',
+    'review.consolidated_label': 'Consolidated analysis',
+    'review.cursor_task_label': 'Cursor task (YAML)',
+    'file.written': 'File written',
+    'file.open_hint': 'Open in Cursor and reference it with',
+    'wizard.loading': 'Loading...',
+    'wizard.files_loaded': 'file(s) loaded',
+  },
+  de: {
+    'status.pending': 'Ausstehend',
+    'status.running': 'Laeuft',
+    'status.running_dots': 'Laeuft...',
+    'status.review': 'Wartet auf Freigabe',
+    'status.approved': 'Freigegeben',
+    'status.rejected': 'Abgelehnt',
+    'status.completed': 'Abgeschlossen',
+    'toast.keys_saved': 'API Keys gespeichert',
+    'toast.error': 'Fehler: ',
+    'toast.saved': 'Gespeichert',
+    'phase.running_review': 'Orchestrator generiert Review-Auftrag...',
+    'phase.running_reviewers': 'Reviewer werden gestartet...',
+    'phase.running_consolidation': 'Orchestrator konsolidiert...',
+    'phase.running_task': 'Orchestrator erstellt Cursor-Auftrag...',
+    'phase.running_file': 'Schreibe Datei...',
+    'phase.approve': 'Freigeben',
+    'phase.reject': 'Ablehnen',
+    'phase.save_changes': 'Aenderungen speichern',
+    'phase.approve_reviews': 'Reviews freigeben',
+    'phase.done': 'Done',
+    'phase.retry': 'Nochmal',
+    'phase.cancel': 'Abbrechen',
+    'review.generated_label': 'Generierter Review-Auftrag (YAML)',
+    'review.consolidated_label': 'Konsolidierte Analyse',
+    'review.cursor_task_label': 'Cursor-Auftrag (YAML)',
+    'file.written': 'Datei geschrieben',
+    'file.open_hint': 'In Cursor oeffnen und referenzieren mit',
+    'wizard.loading': 'Lade...',
+    'wizard.files_loaded': 'Datei(en) geladen',
+  },
+};
+
+window.t = function t(key) {
+  const lang = window.APP_LANG || document.documentElement.lang || 'en';
+  return (window.REVIEWLOOP_I18N[lang] && window.REVIEWLOOP_I18N[lang][key])
+    || (window.REVIEWLOOP_I18N.en && window.REVIEWLOOP_I18N.en[key])
+    || key;
+};

@@ -70,12 +70,32 @@ def run_parallel_reviews(
     if selected_reviewers:
         configs = {k: v for k, v in configs.items() if k in selected_reviewers}
 
+    skipped_errors: dict[str, dict[str, Any]] = {}
+    runnable_configs: dict[str, dict] = {}
+    for ki_id, cfg in configs.items():
+        provider = cfg.get("provider", "anthropic")
+        if provider == "demo" or _resolve_api_key(provider, api_keys):
+            runnable_configs[ki_id] = cfg
+        else:
+            skipped_errors[ki_id] = {
+                "ki_name": cfg.get("name", ki_id),
+                "error": f"API-Key fuer {provider} fehlt; Reviewer wurde uebersprungen.",
+                "duration": 0,
+            }
+    configs = runnable_configs
+
     if not configs:
         with _lock:
             _states[run_id] = {
                 "running": False,
                 "results": {},
-                "errors": {"_": "Keine Reviewer ausgewaehlt oder konfiguriert."},
+                "errors": skipped_errors or {
+                    "_": {
+                        "ki_name": "Reviewer",
+                        "error": "Keine Reviewer ausgewaehlt oder konfiguriert.",
+                        "duration": 0,
+                    }
+                },
                 "done_count": 0,
                 "total_count": 0,
                 "done_names": [],
@@ -86,7 +106,7 @@ def run_parallel_reviews(
     effective_prompt = prompt
     if context_sheet and context_sheet.strip():
         effective_prompt = (
-            "## Aethos Current State Sheet\n"
+            "## Project Current State Sheet\n"
             "(Zur Halluzinationskontrolle — bitte beim Review beachten)\n\n"
             + context_sheet.strip()
             + "\n\n---\n\n"
@@ -97,7 +117,7 @@ def run_parallel_reviews(
         _states[run_id] = {
             "running": True,
             "results": {},
-            "errors": {},
+            "errors": skipped_errors,
             "done_count": 0,
             "total_count": len(configs),
             "done_names": [],

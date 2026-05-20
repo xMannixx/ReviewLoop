@@ -74,7 +74,7 @@ class PipelineRun:
     input_text: str = ""
     input_files: list[str] = field(default_factory=list)
     phases: list[Phase] = field(default_factory=list)
-    # Systemprompt-Override fuer den Teamleiter (alle 3 Teamleiter-Phasen)
+    # Systemprompt-Override fuer den Orchestrator (alle 3 Orchestrator-Phasen)
     km_system_prompt: str = ""
     # Current State Sheet — wird allen Reviewern als Kontext mitgegeben
     context_sheet: str = ""

@@ -1,22 +1,22 @@
 {% extends "base.html" %}
-{% block title %}{{ run.title }} — Aethos Pipeline{% endblock %}
+{% block title %}{{ run.title }} — ReviewLoop{% endblock %}
 
 {% block content %}
 <div class="page-header">
   <div>
-    <a href="/" class="back-link">&#8592; Alle Runs</a>
+    <a href="/" class="back-link">&#8592; {{ t('run.back') }}</a>
     <h1 class="page-title">{{ run.title }}</h1>
-    <p class="page-subtitle">{{ run.description or 'Kein Beschreibung angegeben.' }}</p>
+    <p class="page-subtitle">{{ run.description or t('run.no_description') }}</p>
   </div>
   <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
     <span class="status-badge badge-{{ run.overall_status }}" id="overall-badge">
-      {{ {'pending': 'Ausstehend', 'running': 'Laeuft', 'review': 'Warte auf Manni',
-          'completed': 'Abgeschlossen', 'rejected': 'Abgelehnt'}.get(run.overall_status, run.overall_status) }}
+      {{ {'pending': t('status.pending'), 'running': t('status.running'), 'review': t('status.review'),
+          'completed': t('status.completed'), 'rejected': t('status.rejected')}.get(run.overall_status, run.overall_status) }}
     </span>
     {% if run.overall_status == 'running' %}
-    <button class="btn btn-ghost btn-sm" id="abort-btn" onclick="abortRunPage()">&#9632; Stoppen</button>
+    <button class="btn btn-ghost btn-sm" id="abort-btn" onclick="abortRunPage()">&#9632; {{ t('run.stop') }}</button>
     {% endif %}
-    <button class="btn btn-ghost btn-sm" onclick="deleteRunPage()" title="Run loeschen" style="color:var(--error)">&#128465;</button>
+    <button class="btn btn-ghost btn-sm" onclick="deleteRunPage()" title="{{ t('run.delete') }}" aria-label="{{ t('run.delete') }}" style="color:var(--error)">&#128465;</button>
   </div>
 </div>
 
@@ -42,8 +42,8 @@
       <span class="phase-label">{{ phase.label }}</span>
     </div>
     <span class="status-badge badge-{{ phase.status }}" id="badge-{{ loop.index0 }}">
-      {{ {'pending': 'Ausstehend', 'running': 'Laeuft...', 'review': 'Pruefe',
-          'approved': 'Freigegeben', 'rejected': 'Abgelehnt'}.get(phase.status, phase.status) }}
+      {{ {'pending': t('status.pending'), 'running': t('status.running_dots'), 'review': t('status.review'),
+          'approved': t('status.approved'), 'rejected': t('status.rejected')}.get(phase.status, phase.status) }}
     </span>
   </div>
 
@@ -53,11 +53,11 @@
   {% if idx == 0 %}
   <div class="phase-body" id="body-{{ idx }}">
     {% if phase.status == 'pending' or phase.status == 'rejected' %}
-    <div class="phase-hint">Teamleiter generiert einen strukturierten Review-YAML-Auftrag aus deiner Beschreibung und dem Code.</div>
+    <div class="phase-hint">Der Orchestrator generiert einen strukturierten Review-YAML-Auftrag aus deiner Beschreibung und dem Code.</div>
     {% include '_km_selector.html' %}
     <button class="btn btn-primary" onclick="startPhase({{ idx }})">&#9654; Phase starten</button>
     {% elif phase.status == 'running' %}
-    <div class="status-bar status-running"><div class="spinner"></div><span id="km-running-label-{{ idx }}">Teamleiter generiert Review-Auftrag...</span></div>
+    <div class="status-bar status-running"><div class="spinner"></div><span id="km-running-label-{{ idx }}">{{ t('orchestrator.generating_review') }}</span></div>
     {% elif phase.status in ('review', 'approved') %}
     {% if phase.result and phase.result.km_model %}<div class="result-meta" style="margin-bottom:6px">&#127908; {{ phase.result.km_model }}{% if phase.result.cache_read_tokens %} &nbsp;<span class="cache-badge">&#9889; {{ phase.result.cache_read_tokens }} cached</span>{% endif %}</div>{% endif %}
     <div class="result-label">Generierter Review-Auftrag (YAML)</div>
@@ -159,11 +159,11 @@
   {% elif idx == 2 %}
   <div class="phase-body" id="body-{{ idx }}">
     {% if phase.status == 'pending' or phase.status == 'rejected' %}
-    <div class="phase-hint">Teamleiter analysiert alle Review-Ergebnisse und erstellt Konsens-Findings, einzigartige Findings und priorisierte Massnahmen.</div>
+    <div class="phase-hint">Der Orchestrator analysiert alle Review-Ergebnisse und erstellt Konsens-Findings, einzigartige Findings und priorisierte Massnahmen.</div>
     {% include '_km_selector.html' %}
     <button class="btn btn-primary" onclick="startPhase({{ idx }})">&#9654; Konsolidierung starten</button>
     {% elif phase.status == 'running' %}
-    <div class="status-bar status-running"><div class="spinner"></div><span>Teamleiter konsolidiert...</span></div>
+    <div class="status-bar status-running"><div class="spinner"></div><span>{{ t('orchestrator.consolidating') }}</span></div>
     {% elif phase.status in ('review', 'approved') %}
     {% if phase.result and phase.result.km_model %}<div class="result-meta" style="margin-bottom:6px">&#127908; {{ phase.result.km_model }}</div>{% endif %}
     <div class="result-label">Konsolidierte Analyse</div>
@@ -189,11 +189,11 @@
   {% elif idx == 3 %}
   <div class="phase-body" id="body-{{ idx }}">
     {% if phase.status == 'pending' or phase.status == 'rejected' %}
-    <div class="phase-hint">Teamleiter generiert einen konkreten, umsetzbaren Cursor-Auftrag aus der konsolidierten Analyse.</div>
+    <div class="phase-hint">Der Orchestrator generiert einen konkreten, umsetzbaren Cursor-Auftrag aus der konsolidierten Analyse.</div>
     {% include '_km_selector.html' %}
     <button class="btn btn-primary" onclick="startPhase({{ idx }})">&#9654; Cursor-Auftrag generieren</button>
     {% elif phase.status == 'running' %}
-    <div class="status-bar status-running"><div class="spinner"></div><span>Teamleiter erstellt Cursor-Auftrag...</span></div>
+    <div class="status-bar status-running"><div class="spinner"></div><span>{{ t('orchestrator.generating_task') }}</span></div>
     {% elif phase.status in ('review', 'approved') %}
     {% if phase.result and phase.result.km_model %}<div class="result-meta" style="margin-bottom:6px">&#127908; {{ phase.result.km_model }}</div>{% endif %}
     <div class="result-label">Cursor-Auftrag (YAML)</div>
@@ -234,27 +234,27 @@
   </div>
   {% endif %}
 
-  <!-- Manni-Buttons -->
-  <div class="manni-gates" id="gates-{{ loop.index0 }}">
+  <!-- Approval buttons -->
+  <div class="approval-gates" id="gates-{{ loop.index0 }}">
     {% if phase.status == 'running' %}
-      <button class="btn btn-reject" onclick="cancelPhase({{ idx }})">&#9632; Abbrechen</button>
+      <button class="btn btn-reject" onclick="cancelPhase({{ idx }})">&#9632; {{ t('phase.cancel') }}</button>
       <span style="font-size:12px;color:var(--text-dim);margin-left:4px">Laeuft noch im Hintergrund bis zum naechsten API-Response</span>
     {% elif phase.status == 'review' %}
       {% if idx in (0, 2, 3) %}
-      <button class="btn btn-approve" onclick="approvePhase({{ idx }})">&#10003; Freigeben</button>
-      <button class="btn btn-reject"  onclick="rejectPhase({{ idx }})">&#10007; Ablehnen</button>
-      <button class="btn btn-ghost btn-sm" onclick="saveEdit({{ idx }})">&#128190; Aenderungen speichern</button>
+      <button class="btn btn-approve" onclick="approvePhase({{ idx }})">&#10003; {{ t('phase.approve') }}</button>
+      <button class="btn btn-reject"  onclick="rejectPhase({{ idx }})">&#10007; {{ t('phase.reject') }}</button>
+      <button class="btn btn-ghost btn-sm" onclick="saveEdit({{ idx }})">&#128190; {{ t('phase.save_changes') }}</button>
       {% elif idx == 1 %}
-      <button class="btn btn-approve" onclick="approvePhase({{ idx }})">&#10003; Reviews freigeben</button>
-      <button class="btn btn-reject"  onclick="rejectPhase({{ idx }})">&#10007; Ablehnen</button>
+      <button class="btn btn-approve" onclick="approvePhase({{ idx }})">&#10003; {{ t('phase.approve_reviews') }}</button>
+      <button class="btn btn-reject"  onclick="rejectPhase({{ idx }})">&#10007; {{ t('phase.reject') }}</button>
       {% elif idx == 4 %}
-      <button class="btn btn-approve" onclick="approvePhase({{ idx }})">&#10003; Done</button>
-      <button class="btn btn-reject"  onclick="rejectPhase({{ idx }})">&#8635; Retry</button>
+      <button class="btn btn-approve" onclick="approvePhase({{ idx }})">&#10003; {{ t('phase.done') }}</button>
+      <button class="btn btn-reject"  onclick="rejectPhase({{ idx }})">&#8635; {{ t('phase.retry') }}</button>
       {% endif %}
     {% elif phase.status == 'rejected' %}
-      <button class="btn btn-secondary" onclick="retryPhase({{ idx }})">&#8635; Nochmal</button>
+      <button class="btn btn-secondary" onclick="retryPhase({{ idx }})">&#8635; {{ t('phase.retry') }}</button>
     {% elif phase.status == 'approved' %}
-      <span class="approved-stamp">&#10003; Freigegeben</span>
+      <span class="approved-stamp">&#10003; {{ t('phase.approved') }}</span>
     {% endif %}
   </div>
 

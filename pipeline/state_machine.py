@@ -251,7 +251,7 @@ def mark_phase_error(run_id: str, phase_idx: int, error: str) -> PipelineRun | N
 
 
 def approve_phase(run_id: str, phase_idx: int, edited_result: dict | None = None) -> PipelineRun | None:
-    """Manni approves a phase. Optionally saves an edited result."""
+    """A user approves a phase. Optionally saves an edited result."""
     run = load_run(run_id)
     if run is None:
         return None
@@ -265,7 +265,7 @@ def approve_phase(run_id: str, phase_idx: int, edited_result: dict | None = None
 
 
 def reject_phase(run_id: str, phase_idx: int, reason: str = "") -> PipelineRun | None:
-    """Manni rejects a phase."""
+    """A user rejects a phase."""
     run = load_run(run_id)
     if run is None:
         return None
@@ -307,7 +307,7 @@ def retry_phase(run_id: str, phase_idx: int) -> PipelineRun | None:
 
 
 def update_phase_result(run_id: str, phase_idx: int, result: dict) -> PipelineRun | None:
-    """Manni edited a result in-place (without approving yet)."""
+    """A user edited a result in-place (without approving yet)."""
     run = load_run(run_id)
     if run is None:
         return None

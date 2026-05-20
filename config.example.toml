@@ -1,4 +1,4 @@
-# Aethos Pipeline Dashboard — Rollen-Konfiguration (Beispiel)
+# ReviewLoop — Rollen-Konfiguration (Beispiel)
 #
 # Kopieren: `config.example.toml` → `config.toml` und Pfade anpassen.
 # Relative Pfade beziehen sich auf das Repository-Stammverzeichnis.
@@ -51,13 +51,13 @@ extensions = [".py", ".md", ".yaml", ".yml", ".txt", ".ts", ".js", ".json", ".to
 [anthropic]
 prompt_cache_ttl = "5m"   # "5m" | "1h"
 
-# ── Teamleiter (primaere Keys) ──────────────────────────────────────────────
+# ── Orchestrator / Teamleiter (primaere Keys) ───────────────────────────────
 [teamleiter]
-provider = "anthropic"
-model = "claude-sonnet-4-6"
+provider = "demo"
+model = "demo-orchestrator"
 temperature = 0.3
 max_tokens = 8192
-system_prompt = """Du bist der Teamleiter des Aethos-Review-Systems.
+system_prompt = """Du bist der Orchestrator des ReviewLoop-Systems.
 Du koordinierst den gesamten Review-Build-Zyklus fuer KI-generierte Software.
 Deine Aufgaben:
 1. Review-Auftraege als strukturiertes YAML generieren
@@ -72,10 +72,15 @@ anti_mogel = """
 WICHTIG — Anti-Mogel-Regeln fuer alle generierten Cursor-Auftraege:
 - Keine hardcodierten Werte oder Loesungen die nur fuer spezifische Test-Inputs funktionieren
 - Keine Umgehung von Tests — echte Probleme loesen, nicht Tests manipulieren
-- Falls Tests falsch sind: informiere den Dirigenten statt daran vorbeizuarbeiten
+- Falls Tests falsch sind: informiere den Nutzer statt daran vorbeizuarbeiten
 - Fail-Closed-Prinzip: bei Unsicherheit ablehnen, nicht raten"""
 
-# Diese Modelle erscheinen im Dashboard als auswaehlbar fuer den Teamleiter.
+# Diese Modelle erscheinen im Dashboard als auswaehlbar fuer den Orchestrator.
+[[teamleiter_choices]]
+label = "Demo Mode (kein API-Key)"
+provider = "demo"
+model = "demo-orchestrator"
+
 [[teamleiter_choices]]
 label = "Sonnet 4.6 (Anthropic)"
 provider = "anthropic"
@@ -112,7 +117,7 @@ provider = "anthropic"
 model = "claude-sonnet-4-6"
 temperature = 0.3
 max_tokens = 8192
-system_prompt = """Du bist der Teamleiter des Aethos-Review-Systems.
+system_prompt = """Du bist der Orchestrator des ReviewLoop-Systems.
 Du koordinierst den gesamten Review-Build-Zyklus fuer KI-generierte Software.
 Deine Aufgaben:
 1. Review-Auftraege als strukturiertes YAML generieren
@@ -127,7 +132,7 @@ anti_mogel = """
 WICHTIG — Anti-Mogel-Regeln fuer alle generierten Cursor-Auftraege:
 - Keine hardcodierten Werte oder Loesungen die nur fuer spezifische Test-Inputs funktionieren
 - Keine Umgehung von Tests — echte Probleme loesen, nicht Tests manipulieren
-- Falls Tests falsch sind: informiere den Dirigenten statt daran vorbeizuarbeiten
+- Falls Tests falsch sind: informiere den Nutzer statt daran vorbeizuarbeiten
 - Fail-Closed-Prinzip: bei Unsicherheit ablehnen, nicht raten"""
 
 # Legacy-Fallback fuer alte Loader/Tools.
@@ -162,6 +167,14 @@ provider = "deepseek"
 model = "deepseek-reasoner"
 
 # ── Reviewer ────────────────────────────────────────────────────────────────
+[reviewer.demo]
+provider = "demo"
+model = "demo-reviewer"
+name = "Demo Reviewer"
+role = "Onboarding & Produktklarheit"
+temperature = 0.0
+max_tokens = 2048
+
 [reviewer.google]
 provider = "google"
 model = "gemini-3.1-pro-preview"

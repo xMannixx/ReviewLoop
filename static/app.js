@@ -1,5 +1,5 @@
-/* Aethos Pipeline Dashboard — Frontend JS */
-/* Polling, Manni-gate handlers, dynamic DOM updates */
+/* ReviewLoop — Frontend JS */
+/* Polling, approval-gate handlers, dynamic DOM updates */
 
 'use strict';
 
@@ -38,6 +38,31 @@ function showToast(msg, type) {
   setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400); }, 3000);
 }
 
+function setLanguage(lang) {
+  apiCall('/api/language', 'POST', { lang }).then(() => {
+    window.location.reload();
+  }).catch(e => showToast(t('toast.error') + e, 'error'));
+}
+
+function toggleTheme() {
+  const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  document.documentElement.dataset.theme = next;
+  localStorage.setItem('reviewloop-theme', next);
+}
+
+function dismissOnboarding() {
+  const panel = document.getElementById('onboarding-panel');
+  if (panel) panel.remove();
+  localStorage.setItem('reviewloop-onboarding-dismissed', '1');
+}
+
+(function initMarketReadyChrome() {
+  const theme = localStorage.getItem('reviewloop-theme') || 'dark';
+  document.documentElement.dataset.theme = theme;
+  const panel = document.getElementById('onboarding-panel');
+  if (panel && localStorage.getItem('reviewloop-onboarding-dismissed') === '1') panel.remove();
+})();
+
 // ── API Keys Modal ────────────────────────────────────────────────────────
 
 function toggleKeyModal() {
@@ -66,9 +91,9 @@ function saveKeys() {
   apiCall('/api/keys', 'POST', keys).then(() => {
     loadKeyStatus();
     const msg = document.getElementById('key-save-msg');
-    if (msg) { msg.textContent = '\u2713 Gespeichert'; setTimeout(() => msg.textContent = '', 2500); }
-    showToast('API Keys gespeichert', 'success');
-  }).catch(e => showToast('Fehler: ' + e, 'error'));
+    if (msg) { msg.textContent = '\u2713 ' + t('toast.saved'); setTimeout(() => msg.textContent = '', 2500); }
+    showToast(t('toast.keys_saved'), 'success');
+  }).catch(e => showToast(t('toast.error') + e, 'error'));
 }
 
 // ── Run Page: Polling ─────────────────────────────────────────────────────
@@ -120,8 +145,8 @@ function updateOverallBadge(status) {
   const el = document.getElementById('overall-badge');
   if (!el) return;
   const labels = {
-    pending: 'Ausstehend', running: 'L\u00e4uft',
-    review: 'Warte auf Manni', completed: 'Abgeschlossen', rejected: 'Abgelehnt'
+    pending: t('status.pending'), running: t('status.running'),
+    review: t('status.review'), completed: t('status.completed'), rejected: t('status.rejected')
   };
   el.textContent = labels[status] || status;
   el.className = 'status-badge badge-' + status;
@@ -146,8 +171,8 @@ function updatePhaseCard(idx, phase, fullData) {
   const badge = document.getElementById('badge-' + idx);
   if (badge) {
     const labels = {
-      pending: 'Ausstehend', running: 'L\u00e4uft...', review: 'Pr\u00fcfe',
-      approved: 'Freigegeben', rejected: 'Abgelehnt'
+      pending: t('status.pending'), running: t('status.running_dots'), review: t('status.review'),
+      approved: t('status.approved'), rejected: t('status.rejected')
     };
     badge.textContent = labels[phase.status] || phase.status;
     badge.className = 'status-badge badge-' + phase.status;
@@ -160,19 +185,19 @@ function updatePhaseCard(idx, phase, fullData) {
     renderPhaseReview(idx, phase);
   }
 
-  // Update Manni gates
-  renderManniGates(idx, phase);
+  // Update approval gates
+  renderApprovalGates(idx, phase);
 }
 
 function renderPhaseRunning(idx) {
   const body = document.getElementById('body-' + idx);
   if (!body) return;
   const msgs = [
-    'Teamleiter generiert Review-Auftrag...',
-    'Reviewer werden gestartet...',
-    'Teamleiter konsolidiert...',
-    'Teamleiter erstellt Cursor-Auftrag...',
-    'Schreibe Datei...'
+    t('phase.running_review'),
+    t('phase.running_reviewers'),
+    t('phase.running_consolidation'),
+    t('phase.running_task'),
+    t('phase.running_file')
   ];
   body.innerHTML = '<div class="status-bar status-running"><div class="spinner"></div><span>' + (msgs[idx] || 'L\u00e4uft...') + '</span></div>';
   if (idx === 1) {
@@ -188,7 +213,7 @@ function renderPhaseReview(idx, phase) {
     const text = (phase.result && phase.result.yaml_text) || '';
     const dur = (phase.result && phase.result.duration) ? '<div class="result-meta">\u23F1 ' + phase.result.duration + 's</div>' : '';
     const errBox = phase.error ? '<div class="error-box">' + esc(phase.error) + '</div>' : '';
-    body.innerHTML = '<div class="result-label">Generierter Review-Auftrag (YAML)</div>'
+    body.innerHTML = '<div class="result-label">' + t('review.generated_label') + '</div>'
       + '<textarea class="result-textarea" id="result-text-' + idx + '">' + esc(text) + '</textarea>'
       + dur + errBox;
   } else if (idx === 1) {
@@ -222,7 +247,7 @@ function renderPhaseReview(idx, phase) {
     const text = (phase.result && phase.result.consolidation_text) || '';
     const dur  = (phase.result && phase.result.duration) ? '<div class="result-meta">\u23F1 ' + phase.result.duration + 's</div>' : '';
     const errBox = phase.error ? '<div class="error-box">' + esc(phase.error) + '</div>' : '';
-    body.innerHTML = '<div class="result-label">Konsolidierte Analyse</div>'
+    body.innerHTML = '<div class="result-label">' + t('review.consolidated_label') + '</div>'
       + '<textarea class="result-textarea result-textarea-tall" id="result-text-' + idx + '">' + esc(text) + '</textarea>'
       + dur
       + '<div class="phase2-save-row">'
@@ -244,7 +269,7 @@ function renderPhaseReview(idx, phase) {
     const cacheBadge  = cacheRead ? ' <span class="cache-badge">\u26A1 ' + cacheRead.toLocaleString('de') + ' cached</span>' : '';
     const km   = (phase.result && phase.result.km_model) ? '<div class="result-meta" style="margin-bottom:6px">\uD83C\uDFB8 ' + esc(phase.result.km_model) + thinkBadge + cacheBadge + '</div>' : '';
     const errBox = phase.error ? '<div class="error-box">' + esc(phase.error) + '</div>' : '';
-    body.innerHTML = km + '<div class="result-label">Cursor-Auftrag (YAML)</div>'
+    body.innerHTML = km + '<div class="result-label">' + t('review.cursor_task_label') + '</div>'
       + '<textarea class="result-textarea result-textarea-tall" id="result-text-' + idx + '">' + esc(text) + '</textarea>'
       + dur + errBox;
   } else if (idx === 4) {
@@ -255,9 +280,9 @@ function renderPhaseReview(idx, phase) {
       body.innerHTML = '<div class="file-written-box">'
         + '<div class="file-written-icon">\uD83D\uDCE4</div>'
         + '<div>'
-        + '<div class="file-written-title">Datei geschrieben</div>'
+        + '<div class="file-written-title">' + t('file.written') + '</div>'
         + '<div class="file-written-path">' + esc(fp) + '</div>'
-        + '<div class="file-written-hint">In Cursor \u00f6ffnen und mit <code>@' + esc(fn || '') + '</code> referenzieren.</div>'
+        + '<div class="file-written-hint">' + t('file.open_hint') + ' <code>@' + esc(fn || '') + '</code>.</div>'
         + '</div></div>'
         + '<div class="phase2-save-row">'
         + '<button class="btn btn-secondary btn-sm" onclick="generateTokenReport()">&#128202; Token-Report (.yaml)</button>'
@@ -270,31 +295,31 @@ function renderPhaseReview(idx, phase) {
   }
 }
 
-function renderManniGates(idx, phase) {
+function renderApprovalGates(idx, phase) {
   const gates = document.getElementById('gates-' + idx);
   if (!gates) return;
 
   if (phase.status === 'running') {
-    gates.innerHTML = '<button class="btn btn-reject" onclick="cancelPhase(' + idx + ')">\u25A0 Abbrechen</button>'
-      + '<span style="font-size:12px;color:var(--text-dim);margin-left:4px">L\u00e4uft noch bis zum n\u00e4chsten API-Response</span>';
+    gates.innerHTML = '<button class="btn btn-reject" onclick="cancelPhase(' + idx + ')">\u25A0 ' + t('phase.cancel') + '</button>'
+      + '<span style="font-size:12px;color:var(--text-dim);margin-left:4px">Running until the next API response.</span>';
   } else if (phase.status === 'review') {
     let html = '';
     if (idx === 4) {
-      html = '<button class="btn btn-approve" onclick="approvePhase(' + idx + ')">\u2713 Done</button>'
-           + '<button class="btn btn-reject" onclick="rejectPhase(' + idx + ')">\u21BB Retry</button>';
+      html = '<button class="btn btn-approve" onclick="approvePhase(' + idx + ')">\u2713 ' + t('phase.done') + '</button>'
+           + '<button class="btn btn-reject" onclick="rejectPhase(' + idx + ')">\u21BB ' + t('phase.retry') + '</button>';
     } else if (idx === 1) {
-      html = '<button class="btn btn-approve" onclick="approvePhase(' + idx + ')">\u2713 Reviews freigeben</button>'
-           + '<button class="btn btn-reject" onclick="rejectPhase(' + idx + ')">\u2717 Ablehnen</button>';
+      html = '<button class="btn btn-approve" onclick="approvePhase(' + idx + ')">\u2713 ' + t('phase.approve_reviews') + '</button>'
+           + '<button class="btn btn-reject" onclick="rejectPhase(' + idx + ')">\u2717 ' + t('phase.reject') + '</button>';
     } else {
-      html = '<button class="btn btn-approve" onclick="approvePhase(' + idx + ')">\u2713 Freigeben</button>'
-           + '<button class="btn btn-reject" onclick="rejectPhase(' + idx + ')">\u2717 Ablehnen</button>'
-           + '<button class="btn btn-ghost btn-sm" onclick="saveEdit(' + idx + ')">\uD83D\uDCBE \u00c4nderungen speichern</button>';
+      html = '<button class="btn btn-approve" onclick="approvePhase(' + idx + ')">\u2713 ' + t('phase.approve') + '</button>'
+           + '<button class="btn btn-reject" onclick="rejectPhase(' + idx + ')">\u2717 ' + t('phase.reject') + '</button>'
+           + '<button class="btn btn-ghost btn-sm" onclick="saveEdit(' + idx + ')">\uD83D\uDCBE ' + t('phase.save_changes') + '</button>';
     }
     gates.innerHTML = html;
   } else if (phase.status === 'rejected') {
-    gates.innerHTML = '<button class="btn btn-secondary" onclick="retryPhase(' + idx + ')">\u21BB Nochmal</button>';
+    gates.innerHTML = '<button class="btn btn-secondary" onclick="retryPhase(' + idx + ')">\u21BB ' + t('phase.retry') + '</button>';
   } else if (phase.status === 'approved') {
-    gates.innerHTML = '<span class="approved-stamp">\u2713 Freigegeben</span>';
+    gates.innerHTML = '<span class="approved-stamp">\u2713 ' + t('phase.approved') + '</span>';
   } else {
     gates.innerHTML = '';
   }
@@ -334,7 +359,7 @@ function updateLiveReview(state) {
   }
 }
 
-// ── Teamleiter Model Selection (km_* technical names remain) ─────────────
+// ── Orchestrator Model Selection (km_* technical names remain) ───────────
 
 function selectKM(btn, idx) {
   const container = document.getElementById('km-choices-' + idx);
@@ -431,7 +456,7 @@ function _getSelectedKM(idx) {
   });
 })();
 
-// ── Manni Gate Actions ────────────────────────────────────────────────────
+// ── Approval Gate Actions ─────────────────────────────────────────────────
 
 function startPhase(idx) {
   if (typeof RUN_ID === 'undefined') return;
@@ -445,7 +470,7 @@ function startPhase(idx) {
   apiCall('/api/run/' + RUN_ID + '/phase/' + idx + '/start', 'POST', kmData)
     .then(() => {
       renderPhaseRunning(idx);
-      renderManniGates(idx, { status: 'running' });
+      renderApprovalGates(idx, { status: 'running' });
       const card = document.getElementById('phase-card-' + idx);
       if (card) card.className = 'phase-card status-running';
       const badge = document.getElementById('badge-' + idx);
@@ -491,7 +516,7 @@ function startPhase2() {
   apiCall('/api/run/' + RUN_ID + '/phase/1/start', 'POST', { selected_reviewers: checked, thinking_effort: effort, temperature: temp })
     .then(() => {
       renderPhaseRunning(1);
-      renderManniGates(1, { status: 'running' });
+      renderApprovalGates(1, { status: 'running' });
       const card = document.getElementById('phase-card-1');
       if (card) card.className = 'phase-card status-running';
       const badge = document.getElementById('badge-1');

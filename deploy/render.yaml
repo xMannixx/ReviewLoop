@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: reviewloop
+    runtime: docker
+    plan: starter
+    envVars:
+      - key: REVIEWLOOP_HOST
+        value: 0.0.0.0
+      - key: REVIEWLOOP_PORT
+        value: 5000
+      - key: REVIEWLOOP_BASIC_AUTH_PASSWORD
+        sync: false

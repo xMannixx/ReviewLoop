@@ -49,7 +49,7 @@ def _warn_deprecated_once(logger: logging.Logger | None, message: str) -> None:
     if _deprecation_logged:
         return
     _deprecation_logged = True
-    (logger or logging.getLogger("aethos.dashboard")).warning(message)
+    (logger or logging.getLogger("reviewloop.dashboard")).warning(message)
 
 
 def normalize_teamleiter_aliases(

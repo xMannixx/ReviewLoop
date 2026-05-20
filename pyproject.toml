@@ -1,3 +1,18 @@
+[project]
+name = "reviewloop"
+version = "0.1.0"
+description = "Local AI review pipeline dashboard for orchestrated multi-model code review."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+dependencies = [
+  "flask",
+  "pyyaml",
+]
+
+[project.scripts]
+reviewloop = "app:main"
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

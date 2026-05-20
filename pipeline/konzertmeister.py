@@ -1,5 +1,5 @@
 """
-Teamleiter — API role for phases 1, 3, and 4.
+Orchestrator — API role for phases 1, 3, and 4.
 
 Phase 1: Generate structured review YAML from description + file contents
 Phase 3: Consolidate parallel review results (consensus, unique findings, priorities)
@@ -49,7 +49,7 @@ def _get_api_key(api_keys: dict, provider: str | None = None) -> str:
 
 PHASE1_PROMPT_TEMPLATE = """\
 <context>
-Aufgabenbeschreibung von Manni (Dirigent):
+Aufgabenbeschreibung des Nutzers:
 {description}
 </context>
 
@@ -264,7 +264,7 @@ hinweise: |
 - Maximal 8 Aufgaben, priorisiert nach Konsens-Findings zuerst
 - Im hinweise-Abschnitt IMMER enthalten:
   * Keine hardcodierten Werte oder loesungen die nur fuer spezifische Test-Inputs funktionieren
-  * Falls Tests falsch sind: Dirigenten informieren statt Tests umgehen
+  * Falls Tests falsch sind: Nutzer informieren statt Tests umgehen
   * Fail-Closed: bei Unsicherheit ablehnen, nicht raten
 </constraints>"""
 

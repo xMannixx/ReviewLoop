@@ -1,4 +1,4 @@
-/* Aethos Pipeline Dashboard — Dark Theme */
+/* ReviewLoop — Theme */
 /* Based on orchester.py design language */
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -26,6 +26,33 @@
   --review:     #c084fc;
   --review-bg:  #1e1032;
   --review-border: #6b33b5;
+  --shadow: 0 18px 50px rgba(0,0,0,.28);
+}
+
+:root[data-theme="light"] {
+  --bg:         #f7f8fb;
+  --surface:    #ffffff;
+  --surface2:   #f0f3f8;
+  --border:     #d8dee9;
+  --border2:    #b9c2d0;
+  --text:       #18202f;
+  --text-muted: #536072;
+  --text-dim:   #7b8796;
+  --accent:     #1d75bd;
+  --accent-bg:  #e8f2ff;
+  --accent-border: #2b7ec8;
+  --success:    #047857;
+  --success-bg: #e7f8ef;
+  --success-border: #53b987;
+  --warning:    #b45309;
+  --warning-bg: #fff4d8;
+  --error:      #b42318;
+  --error-bg:   #feeceb;
+  --error-border: #f4a8a3;
+  --review:     #7c3aed;
+  --review-bg:  #f2eafe;
+  --review-border: #a78bfa;
+  --shadow: 0 18px 50px rgba(24,32,47,.16);
 }
 
 body {
@@ -68,7 +95,47 @@ body {
   letter-spacing: -0.3px;
 }
 
-.nav-actions { display: flex; gap: 8px; }
+.nav-actions { display: flex; gap: 8px; align-items: center; }
+
+.lang-select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 8px;
+}
+
+/* ── Onboarding ──────────────────────────────────────────────────────────── */
+
+.onboarding-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(0,0,0,.54);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.onboarding-card {
+  position: relative;
+  width: min(560px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+
+.onboarding-card h2 { margin-bottom: 10px; font-size: 22px; }
+.onboarding-card p { color: var(--text-muted); margin-bottom: 16px; }
+.onboarding-card ol { margin: 0 0 20px 20px; color: var(--text); }
+.onboarding-card li { margin-bottom: 8px; }
+.onboarding-close { position: absolute; right: 16px; top: 14px; }
+.onboarding-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
 /* ── Layout ──────────────────────────────────────────────────────────────── */
 
@@ -260,6 +327,31 @@ body {
 .dot-pending { background: var(--border2); }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
 
+.run-progress {
+  width: 100%;
+  height: 6px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.run-progress-bar {
+  height: 100%;
+  background: var(--accent-border);
+  border-radius: inherit;
+}
+
+.run-card-preview {
+  margin-top: 10px;
+  color: var(--text-dim);
+  font-size: 11px;
+  opacity: 0;
+  transition: opacity .15s;
+}
+
+.run-card-wrapper:hover .run-card-preview { opacity: 1; }
+
 /* ── Stepper ─────────────────────────────────────────────────────────────── */
 
 .stepper {
@@ -370,9 +462,9 @@ body {
 }
 .rejected-hint { border-left-color: var(--error-border); color: var(--error); }
 
-/* ── Manni Gates ─────────────────────────────────────────────────────────── */
+/* ── Approval Gates ──────────────────────────────────────────────────────── */
 
-.manni-gates {
+.approval-gates {
   padding: 14px 20px;
   border-top: 1px solid var(--border);
   background: var(--bg);
@@ -380,6 +472,44 @@ body {
   gap: 10px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+/* ── New Run Wizard ──────────────────────────────────────────────────────── */
+
+.run-wizard-nav {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.run-wizard-tab {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px;
+}
+
+.run-wizard-tab.active {
+  color: var(--text);
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.run-wizard-step[hidden] { display: none; }
+
+.run-wizard-note {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--bg);
+  border-left: 3px solid var(--accent-border);
 }
 
 .approved-stamp {
@@ -431,6 +561,18 @@ body {
   outline: none;
   transition: border-color 0.15s;
   min-height: 120px;
+}
+
+@media (max-width: 720px) {
+  .topnav { padding: 0 12px; }
+  .nav-title { display: none; }
+  .main-content { padding: 20px 12px; }
+  .page-header { flex-direction: column; }
+  .runs-grid { grid-template-columns: 1fr; }
+  .modal-wide { width: calc(100vw - 24px); }
+  .stats-bar, .stats-kv-grid, .run-wizard-nav { grid-template-columns: 1fr; display: grid; }
+  .stepper-step { min-width: 78px; }
+  .phase-card-header { align-items: flex-start; flex-direction: column; }
 }
 .form-textarea:focus { border-color: var(--accent); }
 

@@ -4,3 +4,4 @@ pytest
 pytest-cov
 pydantic
 pyyaml
+mkdocs-material
